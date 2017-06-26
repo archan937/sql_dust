@@ -1,3 +1,3 @@
 defmodule SqlDust.Query do
-  use SqlDust.ComposeUtils
+  use SqlDust.QueryUtils
 end

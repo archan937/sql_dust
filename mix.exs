@@ -9,7 +9,9 @@ defmodule SqlDust.Mixfile do
      start_permanent: Mix.env == :prod,
      description: description(),
      package: package(),
-     deps: deps()]
+     deps: deps(),
+     elixirc_paths: elixirc_paths(Mix.env),
+     aliases: aliases()]
   end
 
   def application do
@@ -25,7 +27,9 @@ defmodule SqlDust.Mixfile do
       {:earmark, "~> 0.1", only: :dev},
       {:ex_doc, "~> 0.11", only: :dev},
       {:credo, "~> 0.2", only: [:dev, :test]},
-      {:inch_ex, ">= 0.0.0", only: :docs}
+      {:inch_ex, ">= 0.0.0", only: :docs},
+      {:db_connection, ">= 0.0.0", only: :test},
+      {:mariaex, ">= 0.0.0", only: :test}
     ]
   end
 
@@ -42,4 +46,12 @@ defmodule SqlDust.Mixfile do
       links: %{github: "https://github.com/bettyblocks/sql_dust"}
     ]
   end
+
+  defp elixirc_paths(:test), do: ~w(lib test/support)
+  defp elixirc_paths(_), do: ~w(lib)
+
+  defp aliases do
+    ["test": ["ecto.create --quiet", "ecto.migrate --quiet", "test"]]
+  end
+
 end

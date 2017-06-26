@@ -1,14 +1,31 @@
 defmodule Ecto.SqlDust do
-  use SqlDust.ComposeUtils
+  use SqlDust.QueryUtils
 
-  def from(options, model) do
-    resource = model.__schema__(:source)
-    derived_schema = derive_schema(model)
+  def from(options, struct) do
+    source = struct.__schema__(:source)
+    derived_schema = derive_schema(struct)
 
     options
-      |> __from__(resource)
-      |> adapter(:postgres)
+      |> __from__(source)
       |> schema(derived_schema)
+      |> ecto_schema(struct)
+      |> adapter(:postgres)
+  end
+
+  def ecto_schema(options, arg) do
+    put(options, :ecto_schema, arg)
+  end
+
+  def to_structs(options, repo) do
+    %{columns: columns, rows: rows} = query(options, repo)
+
+    columns = columns |> Enum.map(&String.to_atom/1)
+    ecto_schema = parse(options).ecto_schema
+
+    Enum.map(rows, fn(row) ->
+      Ecto.Schema.__load__(ecto_schema, nil, nil, nil, {columns, row},
+                           &Ecto.Type.adapter_load(repo.config[:adapter], &1, &2))
+    end)
   end
 
   defp parse(options) do

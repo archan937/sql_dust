@@ -1,5 +1,6 @@
 defmodule SqlDust.QueryTest do
-  use ExUnit.Case
+  use SqlDust.ExUnit.Case
+
   doctest SqlDust.Query
   import SqlDust.Query
 
@@ -477,5 +478,39 @@ defmodule SqlDust.QueryTest do
       LIMIT ?
       """,
       [1, 100, "%Engel%", 20]}
+  end
+
+  describe "querying data" do
+    test ".to_lists()" do
+      assert [
+        [1, "Amsterdam"],
+        [2, "New York"],
+        [3, "Barcelona"],
+        [4, "London"]
+      ] == "cities" |> to_lists(TestRepo)
+
+      assert [
+        "New York",
+        "London",
+        "Barcelona",
+        "Amsterdam"
+      ] == "cities" |> select(:name) |> order_by("name DESC") |> to_lists(TestRepo)
+    end
+
+    test ".to_maps()" do
+      assert [
+        %{"id" => 1, "name" => "Amsterdam"},
+        %{"id" => 2, "name" => "New York"},
+        %{"id" => 3, "name" => "Barcelona"},
+        %{"id" => 4, "name" => "London"}
+      ] == "cities" |> to_maps(TestRepo)
+
+      assert [
+        %{"name" => "New York"},
+        %{"name" => "London"},
+        %{"name" => "Barcelona"},
+        %{"name" => "Amsterdam"}
+      ] == "cities" |> select(:name) |> order_by("name DESC") |> to_maps(TestRepo)
+    end
   end
 end

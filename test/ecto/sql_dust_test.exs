@@ -9,6 +9,7 @@ defmodule Test do
   defmodule City do
     use Ecto.Schema
     schema "cities" do
+      field :name, :string
       has_many :local_weather, Test.Weather
       belongs_to :country, Test.Country
     end
@@ -24,7 +25,7 @@ defmodule Test do
 end
 
 defmodule Ecto.SqlDustTest do
-  use ExUnit.Case
+  use SqlDust.ExUnit.Case
   doctest Ecto.SqlDust
   import Ecto.SqlDust
 
@@ -88,4 +89,55 @@ defmodule Ecto.SqlDustTest do
       WHERE (`local_weather`.`wdate` = ?)
       """, ["2015-09-12"]}
   end
+
+  describe "querying data" do
+    test ".to_lists()" do
+      assert [
+        [1, "Amsterdam"],
+        [2, "New York"],
+        [3, "Barcelona"],
+        [4, "London"]
+      ] == Test.City |> to_lists(TestRepo)
+
+      assert [
+        "New York",
+        "London",
+        "Barcelona",
+        "Amsterdam"
+      ] == Test.City |> select(:name) |> order_by("name DESC") |> to_lists(TestRepo)
+    end
+
+    test ".to_maps()" do
+      assert [
+        %{"id" => 1, "name" => "Amsterdam"},
+        %{"id" => 2, "name" => "New York"},
+        %{"id" => 3, "name" => "Barcelona"},
+        %{"id" => 4, "name" => "London"}
+      ] == Test.City |> to_maps(TestRepo)
+
+      assert [
+        %{"name" => "New York"},
+        %{"name" => "London"},
+        %{"name" => "Barcelona"},
+        %{"name" => "Amsterdam"}
+      ] == Test.City |> select(:name) |> order_by("name DESC") |> to_maps(TestRepo)
+    end
+
+    test ".to_structs()" do
+      assert [
+        %Test.City{id: 1, name: "Amsterdam"},
+        %Test.City{id: 2, name: "New York"},
+        %Test.City{id: 3, name: "Barcelona"},
+        %Test.City{id: 4, name: "London"}
+      ] = Test.City |> to_structs(TestRepo)
+
+      assert [
+        %Test.City{id: 2, name: "New York"},
+        %Test.City{id: 4, name: "London"},
+        %Test.City{id: 3, name: "Barcelona"},
+        %Test.City{id: 1, name: "Amsterdam"}
+      ] = Test.City |> order_by("name DESC") |> to_structs(TestRepo)
+    end
+  end
+
 end
