@@ -14,8 +14,7 @@ defmodule SqlDust do
     options = %{
       select: ".*",
       adapter: :mysql,
-      initial_variables: options[:variables] || %{},
-      variables: %{},
+      variables: options[:variables] || %{},
       unique: false
     }
       |> Map.merge(options)
@@ -38,6 +37,33 @@ defmodule SqlDust do
       |> derive_joins
       |> ensure_unique_records
       |> compose_sql
+  end
+
+  def resolve_placeholders(placeholders, options, values \\ []) do
+    placeholders
+    |> Enum.with_index()
+    |> Enum.map(fn({path, index}) ->
+      case Regex.run(~r/option:(\w+)/, path) do
+        nil ->
+          String.split(path, ".") |> Enum.reduce(options.variables, fn(name, variables) ->
+            if is_map(variables) do
+              case MapUtils.get(variables, name) do
+                nil ->
+                  if Map.has_key?(variables, name) || Map.has_key?(variables, name |> String.to_atom()) do
+                    nil
+                  else
+                    Enum.at(values, index)
+                  end
+                value -> value
+              end
+            else
+              variables
+            end
+          end)
+        [_match, key] ->
+          options[String.to_atom(key)]
+      end
+    end)
   end
 
   defp derive_select(options) do
@@ -149,7 +175,7 @@ defmodule SqlDust do
 
   defp derive_limit(options) do
     if limit = MapUtils.get(options, :limit) do
-      options |> interpolate_option_variable(:limit, limit)
+      options |> put_option_placeholder(:limit, limit)
     else
       options
     end
@@ -157,7 +183,7 @@ defmodule SqlDust do
 
   defp derive_offset(options) do
     if offset = MapUtils.get(options, :offset) do
-      options |> interpolate_option_variable(:offset, offset)
+      options |> put_option_placeholder(:offset, offset)
     else
       options
     end
@@ -212,21 +238,15 @@ defmodule SqlDust do
     Map.put(options, key, prefix <> (conditions |> Enum.join(" AND ")))
   end
 
-  defp interpolate_option_variable(options, key, value) do
-    variables = options.variables
+  defp put_option_placeholder(options, key, value) do
+    interpolated_key = "option:" <> Atom.to_string(key)
 
     variables =
-      unless value == "?" do
-        option_variables = (options.variables[:_options_] || %{}) |> Map.put(key, value)
-        options.variables |> Map.put(:_options_, option_variables)
-      else
-        variables
-      end
-
-    interpolated_key = " <<_options_." <> Atom.to_string(key) <> ">>"
+      options.variables
+      |> Map.put(interpolated_key, value)
 
     options
-      |> Map.put(key, (Atom.to_string(key) |> String.upcase) <> interpolated_key)
+      |> Map.put(key, (Atom.to_string(key) |> String.replace("_", " ") |> String.upcase) <> " <<" <> interpolated_key <> ">>")
       |> Map.put(:variables, variables)
   end
 
@@ -248,6 +268,6 @@ defmodule SqlDust do
       |> List.flatten
       |> Enum.reject(&is_nil/1)
       |> Enum.join("\n")
-      |> interpolate_variables(options.variables, options.initial_variables)
+      |> interpolate_placeholders(options)
   end
 end

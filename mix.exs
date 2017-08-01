@@ -24,7 +24,7 @@ defmodule SqlDust.Mixfile do
       {:benchfella, "~> 0.3.0", only: :dev},
       {:earmark, "~> 0.1", only: :dev},
       {:ex_doc, "~> 0.11", only: :dev},
-      {:credo, "~> 0.2", only: [:dev, :test]},
+      {:credo, "~> 0.8", only: [:dev, :test]},
       {:inch_ex, ">= 0.0.0", only: :docs}
     ]
   end

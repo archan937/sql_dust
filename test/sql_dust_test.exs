@@ -599,26 +599,9 @@ defmodule SqlDustTest do
       SELECT `u`.*
       FROM `users` `u`
       LIMIT ?
-      """, [20]}
-  end
-
-  test "limiting the query result by passing the limit in variables[:_options_][:limit]" do
-    options = %{
-      limit: "?",
-      variables: %{
-        _options_: %{
-          limit: 20
-        }
-      }
-    }
-
-    assert SqlDust.from("users", options) == {"""
-      SELECT `u`.*
-      FROM `users` `u`
-      LIMIT ?
       """,
       [20],
-      ~w(_options_.limit)}
+      ~w(option:limit)}
   end
 
   test "adding an offset to the query result" do
@@ -632,28 +615,54 @@ defmodule SqlDustTest do
       FROM `users` `u`
       LIMIT ?
       OFFSET ?
-      """, [10, 20]}
-  end
-
-  test "adding an offset to the query result by passing the offset in variables[:_options_][:offset]" do
-    options = %{
-      limit: 10,
-      offset: "?",
-      variables: %{
-        _options_: %{
-          offset: 20
-        }
-      }
-    }
-
-    assert SqlDust.from("users", options) == {"""
-      SELECT `u`.*
-      FROM `users` `u`
-      LIMIT ?
-      OFFSET ?
       """,
       [10, 20],
-      [nil, "_options_.offset"]}
+      ~w(option:limit option:offset)}
+  end
+
+  test "resolving placeholders" do
+    placeholders =
+      ~w(person.first_name person.last_name person.last_name option:limit option:offset epic)
+
+    options = %{
+      variables: %{
+        person: %{
+          first_name: "Paul",
+          last_name: "Engel"
+        },
+        awesome: true
+      },
+      limit: 10,
+      offset: 20
+    }
+
+    assert SqlDust.resolve_placeholders(placeholders, options) == [
+      "Paul", "Engel", "Engel", 10, 20, nil
+    ]
+  end
+
+  test "resolving placeholders (with fallback to static values)" do
+    placeholders =
+      ~w(person.first_name person.last_name person.last_name awesome option:limit option:offset)
+
+    options = %{
+      variables: %{
+        person: %{
+          last_name: "Engel"
+        },
+        awesome: nil
+      },
+      limit: 10,
+      offset: 20
+    }
+
+    values = [
+      "Ken", "Engel", "Engel", true, 10, 20
+    ]
+
+    assert SqlDust.resolve_placeholders(placeholders, options, values) == [
+      "Ken", "Engel", "Engel", nil, 10, 20
+    ]
   end
 
   test "quoting SELECT statement aliases" do
@@ -891,7 +900,9 @@ defmodule SqlDustTest do
       HAVING (`order.count` > 5)
       ORDER BY COUNT(DISTINCT `tags`.`id`) DESC
       LIMIT ?
-      """, [5]}
+      """,
+      [5],
+      ~w(option:limit)}
   end
 
   test "DirectiveRecord example 3" do
